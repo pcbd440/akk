@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>탄벌중학교 스피드 알까기</title>
+    <style>
+        :root { --bg-color: #1a1a1a; --board-color: #e3a857; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body { 
+            background-color: var(--bg-color); font-family: "Malgun Gothic", sans-serif; 
+            height: 100vh; color: #fff; overflow: hidden;
+            display: flex; flex-direction: row; 
+        }
+
+        /* 왼쪽 정보 패널 */
+        .info-panel {
+            width: 260px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 25px;
+            border-right: 2px solid #333;
+            text-align: center;
+        }
+
+        h1 { font-size: 1.6rem; color: #ffeb3b; line-height: 1.2; margin-bottom: 10px; }
+        
+        .status-item {
+            background: #2a2a2a;
+            padding: 20px 10px;
+            border-radius: 15px;
+        }
+
+        #turnColor { 
+            display: inline-block; margin-top: 10px;
+            background:#fff; color:#000; padding:8px 25px; 
+            border-radius:25px; font-weight: bold; font-size: 1.2rem;
+        }
+
+        .timer-label { font-size: 1.1rem; color: #aaa; margin-bottom: 5px; }
+        .timer-box { font-size: 5rem; font-weight: 900; color: #ff5252; line-height: 1; }
+
+        .warning { animation: blink 0.5s infinite alternate; }
+        @keyframes blink {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0.5; transform: scale(1.1); }
+        }
+
+        /* 오른쪽 게임 영역 */
+        .game-area {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 15px;
+        }
+
+        .game-container { 
+            height: 95vh;
+            aspect-ratio: 1 / 1; 
+            position: relative; 
+            box-shadow: 0 10px 50px rgba(0,0,0,0.8); 
+        }
+
+        canvas { 
+            background-color: var(--board-color); 
+            border: 8px solid #4e342e; 
+            width: 100%; height: 100%; 
+            display: block; touch-action: none; 
+        }
+
+        /* 안내 팝업 레이아웃 수정 */
+        #overlay {
+            display: flex; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.95); flex-direction: column;
+            justify-content: center; align-items: center; z-index: 10; padding: 30px; text-align: left;
+        }
+        #overlayContent {
+            margin-bottom: 30px; line-height: 1.8; font-size: 1.1rem; color: #eee;
+            max-width: 450px;
+        }
+        #overlayContent b { color: #ffeb3b; }
+
+        .modal-btn { padding: 15px 50px; background: #ff5252; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 1.4rem; }
+
+        @media (max-width: 800px) {
+            body { flex-direction: column; }
+            .info-panel { width: 100%; height: auto; flex-direction: row; border-right: none; border-bottom: 2px solid #333; padding: 10px; justify-content: space-around; }
+            .game-container { height: auto; width: 92vw; }
+            .timer-box { font-size: 3.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="info-panel">
+    <h1>탄벌중<br>스피드 알까기</h1>
+    
+    <div class="status-item">
+        <p class="timer-label">현재 차례</p>
+        <span id="turnColor">흑(Black)</span>
+    </div>
+
+    <div class="status-item">
+        <p class="timer-label">남은 시간</p>
+        <div class="timer-box" id="timerDisplay">10</div>
+    </div>
+</div>
+
+<div class="game-area">
+    <div class="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="overlay">
+            <h2 id="overlayTitle" style="color:#ffeb3b; margin-bottom:20px; font-size: 2.2rem; text-align: center;">🎲 경기 안내</h2>
+            <div id="overlayContent">
+                1. <b>가위바위보 승자</b>가 선공(흑돌)합니다.<br>
+                2. 자기 알을 터치 후 <b>뒤로 당겨서</b> 발사하세요.<br>
+                &nbsp;&nbsp;&nbsp;(당기는 거리만큼 강도가 쎄집니다.)<br>
+                3. 턴당 <b>10초 제한</b>이며, 초과 시 턴이 넘어갑니다.<br>
+                4. 상대 알을 모두 떨어뜨리면 <b>승리</b>합니다.<br>
+                5. 승자는 <b>학번 이름을 선생님께</b> 알려드리세요.
+            </div>
+            <button class="modal-btn" onclick="closeOverlay()">게임 시작</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const overlay = document.getElementById('overlay');
+
+    const MP3_URL = 'https://raw.githubusercontent.com/pcbd440/akk/main/hit.mp3';
+    const soundPool = Array.from({ length: 10 }, () => {
+        const audio = new Audio(MP3_URL);
+        audio.preload = 'auto';
+        return audio;
+    });
+    let poolIndex = 0;
+
+    function playHitSound() {
+        const sound = soundPool[poolIndex];
+        sound.currentTime = 0;
+        sound.play().catch(() => {});
+        poolIndex = (poolIndex + 1) % soundPool.length;
+    }
+
+    const GRID_SIZE = 7;
+    const LOGICAL_SIZE = 600;
+    const TURN_TIME = 10;
+    let cellSize = LOGICAL_SIZE / (GRID_SIZE + 1);
+    let stones = [], isDragging = false, dragStartStone = null, currentMousePos = {x:0, y:0};
+    let currentTurn = 'black', timeLeft = TURN_TIME, isMoving = false, gameOver = false, timerInterval;
+
+    class Stone {
+        constructor(x, y, color) {
+            this.x = x; this.y = y; this.color = color;
+            this.vx = 0; this.vy = 0;
+            this.r = cellSize * 0.315; 
+            this.alive = true;
+        }
+        draw() {
+            if (!this.alive) return;
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+            let grad = ctx.createRadialGradient(this.x-this.r/3, this.y-this.r/3, this.r/10, this.x, this.y, this.r);
+            if (this.color === 'white') {
+                grad.addColorStop(0, "#ffffff"); grad.addColorStop(1, "#cccccc");
+            } else {
+                grad.addColorStop(0, "#666666"); grad.addColorStop(1, "#000000");
+            }
+            ctx.shadowBlur = 8; ctx.shadowColor = "rgba(0,0,0,0.4)";
+            ctx.fillStyle = grad; ctx.fill();
+            ctx.strokeStyle = (this.color === 'white') ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.1)";
+            ctx.stroke();
+            ctx.restore();
+        }
+        update() {
+            if(!this.alive) return;
+            this.x += this.vx; this.y += this.vy;
+            this.vx *= 0.98; this.vy *= 0.98;
+            if (Math.abs(this.vx) < 0.1) this.vx = 0;
+            if (Math.abs(this.vy) < 0.1) this.vy = 0;
+            if (this.x < 0 || this.x > LOGICAL_SIZE || this.y < 0 || this.y > LOGICAL_SIZE) this.alive = false;
+        }
+    }
+
+    function initGame() {
+        stones = [];
+        for (let i = 1; i <= GRID_SIZE; i++) {
+            stones.push(new Stone(i * cellSize, cellSize * 1.2, 'white'));
+            stones.push(new Stone(i * cellSize, LOGICAL_SIZE - cellSize * 1.2, 'black'));
+        }
+    }
+
+    function gameLoop() {
+        ctx.clearRect(0, 0, LOGICAL_SIZE, LOGICAL_SIZE);
+        drawBoard();
+        let moving = false;
+        stones.forEach(s => { if (s.alive) { s.update(); s.draw(); if (s.vx !== 0 || s.vy !== 0) moving = true; }});
+
+        for (let i = 0; i < stones.length; i++) {
+            for (let j = i + 1; j < stones.length; j++) {
+                let s1 = stones[i], s2 = stones[j];
+                if (!s1.alive || !s2.alive) continue;
+                let dx = s2.x - s1.x, dy = s2.y - s1.y, dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < s1.r + s2.r) {
+                    playHitSound();
+                    let angle = Math.atan2(dy, dx), sin = Math.sin(angle), cos = Math.cos(angle);
+                    let v1n = s1.vx * cos + s1.vy * sin, v2n = s2.vx * cos + s2.vy * sin;
+                    let v1t = -s1.vx * sin + s1.vy * cos, v2t = -s2.vx * sin + s2.vy * cos;
+                    s1.vx = v2n * 0.8 * cos - v1t * sin; s1.vy = v2n * 0.8 * sin + v1t * cos;
+                    s2.vx = v1n * 0.8 * cos - v2t * sin; s2.vy = v1n * 0.8 * sin + v2t * cos;
+                    let overlap = (s1.r + s2.r - dist) / 2;
+                    s1.x -= overlap * cos; s1.y -= overlap * sin;
+                    s2.x += overlap * cos; s2.y += overlap * sin;
+                }
+            }
+        }
+
+        if (isMoving && !moving && !gameOver) {
+            checkWinner();
+            if(!gameOver) { switchTurn(); }
+        }
+        isMoving = moving;
+        if (isDragging) {
+            ctx.beginPath(); ctx.moveTo(dragStartStone.x, dragStartStone.y);
+            ctx.lineTo(currentMousePos.x, currentMousePos.y);
+            ctx.strokeStyle = "#ffeb3b"; ctx.lineWidth = 4; ctx.setLineDash([10,5]); ctx.stroke(); ctx.setLineDash([]);
+        }
+        requestAnimationFrame(gameLoop);
+    }
+
+    function drawBoard() {
+        ctx.strokeStyle = "rgba(0,0,0,0.15)"; ctx.lineWidth = 1;
+        for (let i = 1; i <= GRID_SIZE; i++) {
+            ctx.beginPath(); ctx.moveTo(i * cellSize, cellSize); ctx.lineTo(i * cellSize, LOGICAL_SIZE - cellSize); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(cellSize, i * cellSize); ctx.lineTo(LOGICAL_SIZE - cellSize, i * cellSize); ctx.stroke();
+        }
+    }
+
+    function getMousePos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
+        const clientY = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY;
+        return { x: (clientX - rect.left) * (600 / rect.width), y: (clientY - rect.top) * (600 / rect.height) };
+    }
+
+    const startAction = (e) => {
+        if (isMoving || gameOver || overlay.style.display !== 'none') return;
+        const pos = getMousePos(e);
+        stones.forEach(s => { if (s.alive && s.color === currentTurn && Math.sqrt((s.x-pos.x)**2+(s.y-pos.y)**2) < s.r*2.5) { isDragging = true; dragStartStone = s; currentMousePos = pos; }});
+    };
+    const moveAction = (e) => { if (isDragging) { currentMousePos = getMousePos(e); if(e.cancelable) e.preventDefault(); }};
+    const endAction = () => { if (isDragging) { dragStartStone.vx = (dragStartStone.x - currentMousePos.x) * 0.13; dragStartStone.vy = (dragStartStone.y - currentMousePos.y) * 0.13; isDragging = false; }};
+
+    canvas.addEventListener('mousedown', startAction); window.addEventListener('mousemove', moveAction); window.addEventListener('mouseup', endAction);
+    canvas.addEventListener('touchstart', startAction, {passive: false}); window.addEventListener('touchmove', moveAction, {passive: false}); window.addEventListener('touchend', endAction);
+
+    function checkWinner() {
+        const w = stones.filter(s => s.color === 'white' && s.alive).length;
+        const b = stones.filter(s => s.color === 'black' && s.alive).length;
+        if (w === 0 || b === 0) {
+            gameOver = true; clearInterval(timerInterval);
+            document.getElementById('overlayTitle').innerText = "🎊 경기 종료 🎊";
+            const winTeam = b > 0 ? '흑(Black)' : '백(White)';
+            document.getElementById('overlayContent').innerHTML = `<div style="text-align:center;"><b style="font-size:2.2rem; color:#ffeb3b;">${winTeam} 승리!</b><br><br>승자는 학번 이름을 선생님께 알려드리세요.</div>`;
+            const btn = document.querySelector('.modal-btn'); btn.innerText = "다시 하기"; btn.onclick = () => location.reload();
+            overlay.style.display = 'flex';
+        }
+    }
+
+    function switchTurn() {
+        currentTurn = (currentTurn === 'black') ? 'white' : 'black';
+        timeLeft = TURN_TIME;
+        timerDisplay.innerText = timeLeft;
+        timerDisplay.classList.remove('warning');
+        updateTurnUI();
+    }
+
+    function updateTurnUI() {
+        const t = document.getElementById('turnColor');
+        t.innerText = currentTurn === 'black' ? '흑(Black)' : '백(White)';
+        t.style.background = currentTurn === 'black' ? '#000' : '#fff'; t.style.color = currentTurn === 'black' ? '#fff' : '#000';
+    }
+
+    function closeOverlay() { 
+        overlay.style.display = 'none';
+        if(!timerInterval) timerInterval = setInterval(() => { 
+            if (!isMoving && !gameOver) { 
+                timeLeft--; 
+                timerDisplay.innerText = timeLeft; 
+                if (timeLeft <= 5) timerDisplay.classList.add('warning');
+                else timerDisplay.classList.remove('warning');
+                if (timeLeft <= 0) switchTurn();
+            }
+        }, 1000);
+    }
+
+    canvas.width = LOGICAL_SIZE; canvas.height = LOGICAL_SIZE;
+    initGame(); gameLoop();
+</script>
+</body>
+</html>
