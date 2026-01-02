@@ -16,23 +16,15 @@
 
         /* 왼쪽 정보 패널 */
         .info-panel {
-            width: 260px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            gap: 25px;
-            border-right: 2px solid #333;
-            text-align: center;
+            width: 260px; padding: 20px;
+            display: flex; flex-direction: column;
+            justify-content: center; gap: 25px;
+            border-right: 2px solid #333; text-align: center;
         }
 
         h1 { font-size: 1.6rem; color: #ffeb3b; line-height: 1.2; margin-bottom: 10px; }
         
-        .status-item {
-            background: #2a2a2a;
-            padding: 20px 10px;
-            border-radius: 15px;
-        }
+        .status-item { background: #2a2a2a; padding: 20px 10px; border-radius: 15px; }
 
         #turnColor { 
             display: inline-block; margin-top: 10px;
@@ -41,49 +33,31 @@
         }
 
         .timer-label { font-size: 1.1rem; color: #aaa; margin-bottom: 5px; }
-        .timer-box { font-size: 5rem; font-weight: 900; color: #ff5252; line-height: 1; }
+        .timer-box { font-size: 5rem; font-weight: 900; color: #ff5252; line-height: 1; transition: color 0.3s; }
 
-        .warning { animation: blink 0.5s infinite alternate; }
+        /* 5초 이하 긴박함 효과: 색상을 노란색(#ffeb3b)으로 변경 + 깜박임 */
+        .warning {
+            color: #ffeb3b !important; /* 노란색으로 강제 변경 */
+            animation: blink 0.5s infinite alternate;
+        }
+
         @keyframes blink {
             from { opacity: 1; transform: scale(1); }
-            to { opacity: 0.5; transform: scale(1.1); }
+            to { opacity: 0.4; transform: scale(1.1); }
         }
 
         /* 오른쪽 게임 영역 */
-        .game-area {
-            flex: 1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 15px;
-        }
+        .game-area { flex: 1; display: flex; justify-content: center; align-items: center; padding: 15px; }
+        .game-container { height: 95vh; aspect-ratio: 1 / 1; position: relative; box-shadow: 0 10px 50px rgba(0,0,0,0.8); }
+        canvas { background-color: var(--board-color); border: 8px solid #4e342e; width: 100%; height: 100%; display: block; touch-action: none; }
 
-        .game-container { 
-            height: 95vh;
-            aspect-ratio: 1 / 1; 
-            position: relative; 
-            box-shadow: 0 10px 50px rgba(0,0,0,0.8); 
-        }
-
-        canvas { 
-            background-color: var(--board-color); 
-            border: 8px solid #4e342e; 
-            width: 100%; height: 100%; 
-            display: block; touch-action: none; 
-        }
-
-        /* 안내 팝업 레이아웃 수정 */
         #overlay {
             display: flex; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background-color: rgba(0, 0, 0, 0.95); flex-direction: column;
             justify-content: center; align-items: center; z-index: 10; padding: 30px; text-align: left;
         }
-        #overlayContent {
-            margin-bottom: 30px; line-height: 1.8; font-size: 1.1rem; color: #eee;
-            max-width: 450px;
-        }
+        #overlayContent { margin-bottom: 30px; line-height: 1.8; font-size: 1.1rem; color: #eee; max-width: 450px; }
         #overlayContent b { color: #ffeb3b; }
-
         .modal-btn { padding: 15px 50px; background: #ff5252; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 1.4rem; }
 
         @media (max-width: 800px) {
@@ -98,12 +72,10 @@
 
 <div class="info-panel">
     <h1>탄벌중<br>스피드 알까기</h1>
-    
     <div class="status-item">
         <p class="timer-label">현재 차례</p>
         <span id="turnColor">흑(Black)</span>
     </div>
-
     <div class="status-item">
         <p class="timer-label">남은 시간</p>
         <div class="timer-box" id="timerDisplay">10</div>
