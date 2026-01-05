@@ -2,12 +2,12 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Y8 Style Paper Plane - Competition</title>
+    <title>Y8 Style Paper Plane - Right Direction</title>
     <style>
         body { margin: 0; overflow: hidden; background: #4facfe; font-family: 'Arial', sans-serif; }
         #game-container { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
         
-        /* 시작 팝업 스타일 */
+        /* 시작 팝업 */
         #start-modal {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.7);
@@ -18,25 +18,27 @@
             background: white; padding: 30px; border-radius: 20px;
             text-align: center; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
-        .modal-content h2 { color: #333; margin-top: 0; }
         .rules { text-align: left; background: #f0f8ff; padding: 15px; border-radius: 10px; margin: 20px 0; }
         .rules p { margin: 10px 0; color: #555; font-weight: bold; }
         
         #start-btn {
             background: #ff4757; color: white; border: none; padding: 15px 40px;
-            font-size: 18px; border-radius: 50px; cursor: pointer; transition: 0.2s;
+            font-size: 18px; border-radius: 50px; cursor: pointer;
         }
-        #start-btn:hover { background: #ff6b81; transform: scale(1.05); }
 
-        /* 게임 요소들 */
+        /* 오른쪽을 향하는 종이비행기 */
         #plane {
-            position: absolute; width: 50px; height: 20px;
-            left: 150px; top: 50%; background: white;
-            clip-path: polygon(0% 50%, 100% 0%, 85% 50%, 100% 100%, 0% 60%);
-            z-index: 100; display: none; /* 시작 전엔 숨김 */
+            position: absolute; width: 50px; height: 25px;
+            left: 150px; top: 50%;
+            background: white;
+            /* 좌표 수정: 뾰족한 부분이 오른쪽(100%)으로 향하게 변경 */
+            clip-path: polygon(0% 0%, 20% 50%, 0% 100%, 100% 50%);
+            z-index: 100; display: none;
+            filter: drop-shadow(-2px 2px 2px rgba(0,0,0,0.2));
         }
+
         .cloud { position: absolute; background: white; border-radius: 50px; opacity: 0.6; filter: blur(5px); pointer-events: none; }
-        #ui { position: absolute; top: 20px; left: 20px; color: white; z-index: 200; display: none; }
+        #ui { position: absolute; top: 20px; left: 20px; color: white; z-index: 200; display: none; font-size: 20px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -47,16 +49,14 @@
             <h2>종이비행기 멀리 날리기 ✈️</h2>
             <div class="rules">
                 <p>1. ✊✌️✋ 가위바위보로 선공 정하기</p>
-                <p>2. 비행기가 추락한 거리(Score)를 기억하기</p>
-                <p>3. 더 멀리(숫자가 큰 사람) 간 사람이 승리!</p>
+                <p>2. 비행기가 떨어질 때 거리(Score) 기억하기</p>
+                <p>3. 더 멀리 간 사람이 승리!</p>
             </div>
             <button id="start-btn">게임 시작!</button>
         </div>
     </div>
 
-    <div id="ui">
-        <div id="score">Distance: 0m</div>
-    </div>
+    <div id="ui">Distance: <span id="score">0</span>m</div>
     <div id="plane"></div>
 </div>
 
@@ -73,21 +73,21 @@
     let velocityY = 0;
     let distance = 0;
 
-    // 게임 시작 버튼 클릭 이벤트
     startBtn.addEventListener('click', () => {
         modal.style.display = 'none';
         plane.style.display = 'block';
         ui.style.display = 'block';
         gameActive = true;
-        update(); // 게임 루프 시작
+        update();
     });
 
     function createCloud() {
         if (!gameActive) return;
         const cloud = document.createElement('div');
         cloud.className = 'cloud';
-        const size = Math.random() * 100 + 50;
+        const size = Math.random() * 80 + 40;
         cloud.style.width = size + 'px';
+        cloud.style.height = (size * 0.5) + 'px';
         cloud.style.left = window.innerWidth + 'px';
         cloud.style.top = Math.random() * window.innerHeight + 'px';
         container.appendChild(cloud);
@@ -96,25 +96,26 @@
             const curLeft = parseFloat(cloud.style.left);
             if (curLeft < -200) { container.removeChild(cloud); }
             else {
-                cloud.style.left = (curLeft - 2) + 'px';
+                cloud.style.left = (curLeft - 3) + 'px';
                 if(gameActive) requestAnimationFrame(move);
             }
         };
         move();
     }
-    setInterval(createCloud, 2000);
+    setInterval(createCloud, 1500);
 
     function update() {
         if (!gameActive) return;
 
-        velocityY += 0.2; 
+        velocityY += 0.2; // 중력
         planeY += velocityY;
         
-        plane.style.transform = `rotate(${velocityY * 4}deg)`;
+        // 회전 각도: 떨어질 때 머리가 아래로(양수), 올라갈 때 위로(음수)
+        plane.style.transform = `rotate(${velocityY * 3}deg)`;
         plane.style.top = planeY + 'px';
 
         distance += 2;
-        scoreEl.innerText = `Distance: ${distance}m`;
+        scoreEl.innerText = distance;
 
         if (planeY > window.innerHeight || planeY < 0) {
             gameOver();
@@ -124,6 +125,7 @@
         requestAnimationFrame(update);
     }
 
+    // 클릭 시 상승
     window.addEventListener('mousedown', () => { if(gameActive) velocityY = -5; });
     window.addEventListener('touchstart', (e) => { 
         if(gameActive) { e.preventDefault(); velocityY = -5; }
@@ -131,7 +133,7 @@
 
     function gameOver() {
         gameActive = false;
-        alert(`비행 종료!\n기록: ${distance}m\n\n점수를 기억하고 다음 차례에게 넘기세요!`);
+        alert(`비행 종료!\n기록: ${distance}m\n\n이 점수를 기억하고 친구와 대결하세요!`);
         location.reload();
     }
 </script>
