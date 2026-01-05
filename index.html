@@ -4,34 +4,33 @@
     <meta charset="UTF-8">
     <title>CSS Paper Plane Game</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: sans-serif; }
+        body { margin: 0; overflow: hidden; font-family: sans-serif; background: #000; }
         #game-container {
             position: relative;
             width: 100vw;
             height: 100vh;
-            background: linear-gradient(to bottom, #87CEEB, #E0F6FF); /* 하늘 배경 */
+            background: linear-gradient(to bottom, #87CEEB, #E0F6FF);
+            overflow: hidden;
         }
         
-        /* CSS로 만든 종이비행기 */
         #plane {
             position: absolute;
             width: 40px;
             height: 30px;
-            left: 50px;
+            left: 100px; /* 위치 고정 */
             top: 50%;
             background-color: white;
-            /* 종이비행기 모양으로 자르기 */
             clip-path: polygon(0% 50%, 100% 0%, 80% 50%, 100% 100%);
             transition: transform 0.1s;
+            z-index: 10;
         }
 
-        /* 장애물 스타일 */
         .pipe {
             position: absolute;
-            right: -60px;
             width: 60px;
-            background-color: #2e7d32; /* 초록색 기둥 */
+            background-color: #2e7d32;
             border: 2px solid #1b5e20;
+            right: -70px; /* 화면 오른쪽 밖에서 생성 */
         }
 
         #score {
@@ -42,6 +41,7 @@
             font-weight: bold;
             color: white;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            z-index: 20;
         }
     </style>
 </head>
@@ -59,40 +59,101 @@
 
     let planeY = window.innerHeight / 2;
     let velocity = 0;
-    const gravity = 0.25; // 중력
-    const jump = -5;      // 탭했을 때 튀어오르는 힘
+    const gravity = 0.25;
+    const jump = -5;
     let score = 0;
     let isGameOver = false;
+    
+    // 장애물 관리 리스트
+    let pipes = [];
+    let pipeTick = 0;
 
-    // 1. 중력 및 움직임 로직
+    function createPipe() {
+        const gap = 200; // 파이프 사이의 틈새
+        const minPipeHeight = 50;
+        const randomHeight = Math.random() * (window.innerHeight - gap - (minPipeHeight * 2)) + minPipeHeight;
+
+        // 위쪽 파이프
+        const topPipe = document.createElement('div');
+        topPipe.className = 'pipe';
+        topPipe.style.height = randomHeight + 'px';
+        topPipe.style.top = '0';
+        topPipe.style.left = window.innerWidth + 'px';
+        container.appendChild(topPipe);
+
+        // 아래쪽 파이프
+        const bottomPipe = document.createElement('div');
+        bottomPipe.className = 'pipe';
+        bottomPipe.style.height = (window.innerHeight - randomHeight - gap) + 'px';
+        bottomPipe.style.bottom = '0';
+        bottomPipe.style.left = window.innerWidth + 'px';
+        container.appendChild(bottomPipe);
+
+        pipes.push({ top: topPipe, bottom: bottomPipe, left: window.innerWidth, passed: false });
+    }
+
     function update() {
         if (isGameOver) return;
 
+        // 1. 비행기 물리 엔진
         velocity += gravity;
         planeY += velocity;
-        
-        // 회전 효과 (속도에 따라 기 머리가 위아래로)
         plane.style.transform = `rotate(${velocity * 3}deg)`;
         plane.style.top = planeY + 'px';
 
-        // 바닥이나 천장에 닿으면 게임오버
+        // 2. 바닥/천장 충돌
         if (planeY > window.innerHeight || planeY < 0) {
-            gameOver();
+            return gameOver();
+        }
+
+        // 3. 장애물 생성 및 이동 (오른쪽으로 날아가는 느낌 구현)
+        pipeTick++;
+        if (pipeTick % 120 === 0) { // 약 2초마다 장애물 생성
+            createPipe();
+        }
+
+        for (let i = pipes.length - 1; i >= 0; i--) {
+            let p = pipes[i];
+            p.left -= 3; // 장애물을 왼쪽으로 이동 (비행기가 오른쪽으로 가는 효과)
+            p.top.style.left = p.left + 'px';
+            p.bottom.style.left = p.left + 'px';
+
+            // 4. 충돌 감지
+            const planeRect = plane.getBoundingClientRect();
+            const topRect = p.top.getBoundingClientRect();
+            const bottomRect = p.bottom.getBoundingClientRect();
+
+            if (
+                planeRect.right > topRect.left && 
+                planeRect.left < topRect.right && 
+                (planeRect.top < topRect.bottom || planeRect.bottom > bottomRect.top)
+            ) {
+                return gameOver();
+            }
+
+            // 5. 점수 계산
+            if (!p.passed && p.left < 100) {
+                p.passed = true;
+                score++;
+                scoreElement.innerText = "Score: " + score;
+            }
+
+            // 6. 화면 밖으로 나간 장애물 제거
+            if (p.left < -100) {
+                container.removeChild(p.top);
+                container.removeChild(p.bottom);
+                pipes.splice(i, 1);
+            }
         }
 
         requestAnimationFrame(update);
     }
 
-    // 2. 탭(클릭) 이벤트
-    window.addEventListener('mousedown', () => {
-        velocity = jump;
-    });
-    
-    // 터치 지원 (모바일)
-    window.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        velocity = jump;
-    });
+    window.addEventListener('mousedown', () => { velocity = jump; });
+    window.addEventListener('touchstart', (e) => { 
+        e.preventDefault(); 
+        velocity = jump; 
+    }, {passive: false});
 
     function gameOver() {
         isGameOver = true;
