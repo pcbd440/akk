@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>종이비행기 장애물 피하기!</title>
+    <title>종이비행기 대결 - 난이도 조절판</title>
     <style>
         body { margin: 0; overflow: hidden; background: #4facfe; font-family: 'Malgun Gothic', sans-serif; }
         #game-container { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
@@ -37,11 +37,12 @@
             filter: drop-shadow(-3px 3px 2px rgba(0,0,0,0.2));
         }
 
-        /* 장애물(파이프) 스타일 - 사진의 밝은 하늘색 기둥 느낌 */
+        /* 장애물 스타일 - 굵기를 30px로 줄임 (이전 60px) */
         .pipe {
-            position: absolute; width: 60px;
-            background: rgba(255, 255, 255, 0.5); /* 반투명 흰색 */
-            border-radius: 30px; /* 둥근 기둥 */
+            position: absolute; 
+            width: 30px; 
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 15px;
             z-index: 50;
         }
 
@@ -57,11 +58,11 @@
 <div id="game-container">
     <div id="start-modal">
         <div class="modal-content">
-            <h2 style="margin-top:0;">✈️ 장애물 피하기 대결!</h2>
+            <h2 style="margin-top:0;">✈️ 종이비행기 대결!</h2>
             <div class="rules">
-                <p>1. 가위바위보로 순서를 정하세요.</p>
-                <p>2. 기둥 사이 <b>빈 공간</b>을 통과하세요!</p>
-                <p>3. 추락 시 기록된 숫자가 높은 사람이 승리!</p>
+                <p>1. ✊✌️✋ 가위바위보로 순서 정하기</p>
+                <p>2. 얇아진 기둥 사이를 통과하세요!</p>
+                <p>3. 더 멀리 날아간 사람이 승리!</p>
             </div>
             <button id="start-btn">비행 시작!</button>
         </div>
@@ -89,13 +90,11 @@
     const gravity = 0.22;
     const jumpPower = -5;
 
-    // 장애물 생성 함수
     function createPipes() {
-        const gap = 220; // 통과할 빈 공간 크기
-        const minHeight = 100;
+        const gap = 240; // 통과 공간을 살짝 더 넓힘
+        const minHeight = 80;
         const randomY = Math.random() * (window.innerHeight - gap - (minHeight * 2)) + minHeight;
 
-        // 위쪽 기둥
         const topPipe = document.createElement('div');
         topPipe.className = 'pipe';
         topPipe.style.height = randomY + 'px';
@@ -103,7 +102,6 @@
         topPipe.style.left = window.innerWidth + 'px';
         container.appendChild(topPipe);
 
-        // 아래쪽 기둥
         const bottomPipe = document.createElement('div');
         bottomPipe.className = 'pipe';
         bottomPipe.style.height = (window.innerHeight - randomY - gap) + 'px';
@@ -125,39 +123,36 @@
     function update() {
         if (!gameActive) return;
 
-        // 1. 비행기 물리
         velocityY += gravity;
         planeY += velocityY;
         plane.style.transform = `rotate(${velocityY * 3}deg)`;
         plane.style.top = planeY + 'px';
 
-        // 2. 바닥/천장 충돌
         if (planeY > window.innerHeight || planeY < 0) return gameOver();
 
-        // 3. 장애물 관리
         pipeTick++;
-        if (pipeTick % 100 === 0) createPipes(); // 약 1.5~2초마다 생성
+        // 장애물 간 간격 조절: 숫자를 높일수록(100 -> 160) 장애물이 드문드문 나옵니다.
+        if (pipeTick % 160 === 0) createPipes(); 
 
         for (let i = pipes.length - 1; i >= 0; i--) {
             let p = pipes[i];
-            p.left -= 4; // 장애물 이동 속도
+            p.left -= 3.5; // 이동 속도도 살짝 늦춰서 난이도 조절
             p.top.style.left = p.left + 'px';
             p.bottom.style.left = p.left + 'px';
 
-            // 4. 충돌 감지 로직
             const planeRect = plane.getBoundingClientRect();
             const topRect = p.top.getBoundingClientRect();
             const bottomRect = p.bottom.getBoundingClientRect();
 
+            // 충돌 판정 (여유를 두기 위해 판정 범위를 살짝 줄임)
             if (
-                planeRect.right > topRect.left && 
-                planeRect.left < topRect.right && 
-                (planeRect.top < topRect.bottom || planeRect.bottom > bottomRect.top)
+                planeRect.right - 5 > topRect.left && 
+                planeRect.left + 5 < topRect.right && 
+                (planeRect.top + 5 < topRect.bottom || planeRect.bottom - 5 > bottomRect.top)
             ) {
                 return gameOver();
             }
 
-            // 화면 밖 기둥 제거
             if (p.left < -100) {
                 container.removeChild(p.top);
                 container.removeChild(p.bottom);
@@ -165,7 +160,6 @@
             }
         }
 
-        // 5. 점수 계산
         distance += 1;
         scoreEl.innerText = distance;
 
@@ -181,7 +175,7 @@
 
     function gameOver() {
         gameActive = false;
-        alert(`비행 종료!\n기록: ${distance}m\n\n친구에게 차례를 넘기세요!`);
+        alert(`비행 종료!\n최종 기록: ${distance}m\n\n점수를 기억하고 차례를 넘기세요!`);
         location.reload();
     }
 </script>
