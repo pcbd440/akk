@@ -3,53 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>종이비행기 대결 - 난이도 조절판</title>
+    <title>종이비행기 대결 - 시원한 조작 모드</title>
     <style>
         body { margin: 0; overflow: hidden; background: #4facfe; font-family: 'Malgun Gothic', sans-serif; }
         #game-container { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
         
-        /* 시작 팝업 */
-        #start-modal {
+        /* 시작/종료 팝업 */
+        #start-modal, #result-modal {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.75);
+            background: rgba(0, 0, 0, 0.8);
             display: flex; justify-content: center; align-items: center;
             z-index: 1000;
         }
+        #result-modal { display: none; } /* 결과창은 처음엔 숨김 */
+
         .modal-content {
-            background: white; padding: 30px; border-radius: 20px;
-            text-align: center; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background: white; padding: 40px; border-radius: 25px;
+            text-align: center; max-width: 450px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
-        .rules { text-align: left; background: #f0f8ff; padding: 15px; border-radius: 10px; margin: 20px 0; }
-        .rules p { margin: 10px 0; color: #333; font-weight: bold; }
         
-        #start-btn {
-            background: #ff4757; color: white; border: none; padding: 15px 40px;
-            font-size: 18px; border-radius: 50px; cursor: pointer;
+        /* 최종 거리 강조 스타일 */
+        .final-score-title { font-size: 24px; color: #333; margin-bottom: 10px; }
+        .final-score-number { 
+            font-size: 80px; 
+            font-weight: 900; 
+            color: #FFD700; /* 노란색 */
+            text-shadow: 3px 3px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000;
+            margin: 20px 0;
         }
 
-        /* 오른쪽 향하는 종이비행기 */
+        #start-btn, #restart-btn {
+            background: #ff4757; color: white; border: none; padding: 15px 40px;
+            font-size: 20px; border-radius: 50px; cursor: pointer; font-weight: bold;
+        }
+
+        /* 비행기 */
         #plane {
-            position: absolute; width: 45px; height: 22px;
-            left: 80px; top: 50%;
+            position: absolute; width: 50px; height: 25px;
+            left: 100px; top: 50%;
             background: white;
             clip-path: polygon(0% 15%, 20% 50%, 0% 85%, 100% 50%);
             z-index: 100; display: none;
             filter: drop-shadow(-3px 3px 2px rgba(0,0,0,0.2));
         }
 
-        /* 장애물 스타일 - 굵기를 30px로 줄임 (이전 60px) */
+        /* 얇은 장애물 */
         .pipe {
-            position: absolute; 
-            width: 30px; 
+            position: absolute; width: 25px; 
             background: rgba(255, 255, 255, 0.6);
-            border-radius: 15px;
-            z-index: 50;
+            border-radius: 15px; z-index: 50;
         }
 
         #ui { 
             position: absolute; top: 20px; left: 20px; color: white; 
-            z-index: 200; display: none; font-size: 24px; font-weight: bold;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            z-index: 200; display: none; font-size: 28px; font-weight: bold;
         }
     </style>
 </head>
@@ -59,12 +66,21 @@
     <div id="start-modal">
         <div class="modal-content">
             <h2 style="margin-top:0;">✈️ 종이비행기 대결!</h2>
-            <div class="rules">
+            <div style="text-align: left; background: #f0f8ff; padding: 15px; border-radius: 10px; margin: 20px 0;">
                 <p>1. ✊✌️✋ 가위바위보로 순서 정하기</p>
-                <p>2. 얇아진 기둥 사이를 통과하세요!</p>
-                <p>3. 더 멀리 날아간 사람이 승리!</p>
+                <p>2. 클릭 한 번에 <b>높게</b> 튀어오릅니다!</p>
+                <p>3. 장애물 간격이 넓어 피하기 쉬워요.</p>
             </div>
             <button id="start-btn">비행 시작!</button>
+        </div>
+    </div>
+
+    <div id="result-modal">
+        <div class="modal-content">
+            <div class="final-score-title">나의 최종 이동 거리</div>
+            <div id="final-score" class="final-score-number">0m</div>
+            <p style="color:#666; font-weight:bold;">점수를 기억하고 다음 차례에게 넘기세요!</p>
+            <button id="restart-btn" onclick="location.reload()">다시 하기</button>
         </div>
     </div>
 
@@ -73,7 +89,9 @@
 </div>
 
 <script>
-    const modal = document.getElementById('start-modal');
+    const startModal = document.getElementById('start-modal');
+    const resultModal = document.getElementById('result-modal');
+    const finalScoreEl = document.getElementById('final-score');
     const startBtn = document.getElementById('start-btn');
     const plane = document.getElementById('plane');
     const ui = document.getElementById('ui');
@@ -87,11 +105,12 @@
     let pipes = [];
     let pipeTick = 0;
 
-    const gravity = 0.22;
-    const jumpPower = -5;
+    // 조작 물리값 조정
+    const gravity = 0.25;      // 중력 살짝 증가 (무게감)
+    const jumpPower = -7.5;    // 점프 힘 강화 (이전 -5) -> 한번 클릭에 확 튐
 
     function createPipes() {
-        const gap = 240; // 통과 공간을 살짝 더 넓힘
+        const gap = 280; // 통과 공간 더 넓게 (이전 240)
         const minHeight = 80;
         const randomY = Math.random() * (window.innerHeight - gap - (minHeight * 2)) + minHeight;
 
@@ -113,7 +132,7 @@
     }
 
     startBtn.addEventListener('click', () => {
-        modal.style.display = 'none';
+        startModal.style.display = 'none';
         plane.style.display = 'block';
         ui.style.display = 'block';
         gameActive = true;
@@ -131,12 +150,12 @@
         if (planeY > window.innerHeight || planeY < 0) return gameOver();
 
         pipeTick++;
-        // 장애물 간 간격 조절: 숫자를 높일수록(100 -> 160) 장애물이 드문드문 나옵니다.
-        if (pipeTick % 160 === 0) createPipes(); 
+        // 장애물 간 간격 대폭 확대: 160 -> 240 (장애물이 훨씬 드물게 나옴)
+        if (pipeTick % 240 === 0) createPipes(); 
 
         for (let i = pipes.length - 1; i >= 0; i--) {
             let p = pipes[i];
-            p.left -= 3.5; // 이동 속도도 살짝 늦춰서 난이도 조절
+            p.left -= 3.5; 
             p.top.style.left = p.left + 'px';
             p.bottom.style.left = p.left + 'px';
 
@@ -144,11 +163,11 @@
             const topRect = p.top.getBoundingClientRect();
             const bottomRect = p.bottom.getBoundingClientRect();
 
-            // 충돌 판정 (여유를 두기 위해 판정 범위를 살짝 줄임)
+            // 충돌 판정 여유 더 줌
             if (
-                planeRect.right - 5 > topRect.left && 
-                planeRect.left + 5 < topRect.right && 
-                (planeRect.top + 5 < topRect.bottom || planeRect.bottom - 5 > bottomRect.top)
+                planeRect.right - 8 > topRect.left && 
+                planeRect.left + 8 < topRect.right && 
+                (planeRect.top + 8 < topRect.bottom || planeRect.bottom - 8 > bottomRect.top)
             ) {
                 return gameOver();
             }
@@ -175,8 +194,9 @@
 
     function gameOver() {
         gameActive = false;
-        alert(`비행 종료!\n최종 기록: ${distance}m\n\n점수를 기억하고 차례를 넘기세요!`);
-        location.reload();
+        // 결과창 표시
+        finalScoreEl.innerText = distance + "m";
+        resultModal.style.display = "flex";
     }
 </script>
 </body>
