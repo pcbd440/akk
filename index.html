@@ -2,148 +2,138 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Y8 Style Paper Plane</title>
+    <title>Y8 Style Paper Plane - Competition</title>
     <style>
         body { margin: 0; overflow: hidden; background: #4facfe; font-family: 'Arial', sans-serif; }
         #game-container { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
         
-        /* 구름 배경 (Parallax 효과) */
-        .cloud {
-            position: absolute; background: white; border-radius: 50px; opacity: 0.6;
-            filter: blur(5px); pointer-events: none;
+        /* 시작 팝업 스타일 */
+        #start-modal {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 1000;
         }
+        .modal-content {
+            background: white; padding: 30px; border-radius: 20px;
+            text-align: center; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .modal-content h2 { color: #333; margin-top: 0; }
+        .rules { text-align: left; background: #f0f8ff; padding: 15px; border-radius: 10px; margin: 20px 0; }
+        .rules p { margin: 10px 0; color: #555; font-weight: bold; }
+        
+        #start-btn {
+            background: #ff4757; color: white; border: none; padding: 15px 40px;
+            font-size: 18px; border-radius: 50px; cursor: pointer; transition: 0.2s;
+        }
+        #start-btn:hover { background: #ff6b81; transform: scale(1.05); }
 
+        /* 게임 요소들 */
         #plane {
             position: absolute; width: 50px; height: 20px;
-            left: 150px; top: 50%;
-            background: white;
+            left: 150px; top: 50%; background: white;
             clip-path: polygon(0% 50%, 100% 0%, 85% 50%, 100% 100%, 0% 60%);
-            box-shadow: -5px 5px 10px rgba(0,0,0,0.2);
-            z-index: 100;
+            z-index: 100; display: none; /* 시작 전엔 숨김 */
         }
-
-        /* 비행기 뒤 잔상(Trail) */
-        .trail {
-            position: absolute; width: 4px; height: 4px;
-            background: rgba(255, 255, 255, 0.8);
-            border-radius: 50%; pointer-events: none;
-        }
-
-        #ui {
-            position: absolute; top: 20px; left: 20px; color: white;
-            z-index: 200; text-shadow: 2px 2px 5px rgba(0,0,0,0.3);
-        }
+        .cloud { position: absolute; background: white; border-radius: 50px; opacity: 0.6; filter: blur(5px); pointer-events: none; }
+        #ui { position: absolute; top: 20px; left: 20px; color: white; z-index: 200; display: none; }
     </style>
 </head>
 <body>
 
 <div id="game-container">
+    <div id="start-modal">
+        <div class="modal-content">
+            <h2>종이비행기 멀리 날리기 ✈️</h2>
+            <div class="rules">
+                <p>1. ✊✌️✋ 가위바위보로 선공 정하기</p>
+                <p>2. 비행기가 추락한 거리(Score)를 기억하기</p>
+                <p>3. 더 멀리(숫자가 큰 사람) 간 사람이 승리!</p>
+            </div>
+            <button id="start-btn">게임 시작!</button>
+        </div>
+    </div>
+
     <div id="ui">
         <div id="score">Distance: 0m</div>
-        <div id="speed-indicator">Speed: 0km/h</div>
     </div>
     <div id="plane"></div>
 </div>
 
 <script>
-    const container = document.getElementById('game-container');
+    const modal = document.getElementById('start-modal');
+    const startBtn = document.getElementById('start-btn');
     const plane = document.getElementById('plane');
+    const ui = document.getElementById('ui');
+    const container = document.getElementById('game-container');
     const scoreEl = document.getElementById('score');
-    const speedEl = document.getElementById('speed-indicator');
 
-    let gameActive = true;
+    let gameActive = false;
     let planeY = window.innerHeight / 2;
     let velocityY = 0;
-    let rotation = 0;
-    let speed = 5; // 전진 속도
     let distance = 0;
 
-    // 1. 구름 생성 (배경 깊이감)
+    // 게임 시작 버튼 클릭 이벤트
+    startBtn.addEventListener('click', () => {
+        modal.style.display = 'none';
+        plane.style.display = 'block';
+        ui.style.display = 'block';
+        gameActive = true;
+        update(); // 게임 루프 시작
+    });
+
     function createCloud() {
+        if (!gameActive) return;
         const cloud = document.createElement('div');
         cloud.className = 'cloud';
         const size = Math.random() * 100 + 50;
         cloud.style.width = size + 'px';
-        cloud.style.height = (size * 0.6) + 'px';
-        cloud.style.top = Math.random() * window.innerHeight + 'px';
         cloud.style.left = window.innerWidth + 'px';
-        // 멀리 있는 구름은 느리게 움직이도록 속도 부여
-        const cloudSpeed = Math.random() * 2 + 1;
+        cloud.style.top = Math.random() * window.innerHeight + 'px';
         container.appendChild(cloud);
 
-        const moveCloud = () => {
-            if (!gameActive) return;
-            const currentLeft = parseFloat(cloud.style.left);
-            if (currentLeft < -200) {
-                container.removeChild(cloud);
-            } else {
-                cloud.style.left = (currentLeft - cloudSpeed * (speed/5)) + 'px';
-                requestAnimationFrame(moveCloud);
+        const move = () => {
+            const curLeft = parseFloat(cloud.style.left);
+            if (curLeft < -200) { container.removeChild(cloud); }
+            else {
+                cloud.style.left = (curLeft - 2) + 'px';
+                if(gameActive) requestAnimationFrame(move);
             }
         };
-        moveCloud();
+        move();
     }
     setInterval(createCloud, 2000);
 
-    // 2. 비행기 잔상 효과
-    function createTrail(x, y) {
-        const trail = document.createElement('div');
-        trail.className = 'trail';
-        trail.style.left = x + 'px';
-        trail.style.top = y + 'px';
-        container.appendChild(trail);
-        
-        setTimeout(() => {
-            trail.style.opacity = '0';
-            setTimeout(() => container.removeChild(trail), 500);
-        }, 100);
-    }
-
-    // 3. 메인 게임 루프
     function update() {
         if (!gameActive) return;
 
-        // 물리 법칙: 각도가 위를 향하면 속도가 줄고, 아래를 향하면 빨라짐
-        velocityY += 0.15; // 중력
+        velocityY += 0.2; 
         planeY += velocityY;
         
-        // 회전 제어: 속도와 방향에 따라 부드럽게 회전
-        rotation = velocityY * 4;
-        plane.style.transform = `rotate(${rotation}deg)`;
+        plane.style.transform = `rotate(${velocityY * 4}deg)`;
         plane.style.top = planeY + 'px';
 
-        // 전진 거리 계산
-        distance += Math.floor(speed);
+        distance += 2;
         scoreEl.innerText = `Distance: ${distance}m`;
-        speedEl.innerText = `Speed: ${Math.floor(speed * 20)}km/h`;
 
-        // 잔상 생성
-        createTrail(150, planeY + 10);
-
-        // 경계선 체크
         if (planeY > window.innerHeight || planeY < 0) {
             gameOver();
+            return;
         }
 
         requestAnimationFrame(update);
     }
 
-    // 제어: 클릭 시 상승
-    const handleJump = () => {
-        if (!gameActive) return;
-        velocityY = -4.5;
-    };
-
-    window.addEventListener('mousedown', handleJump);
-    window.addEventListener('touchstart', (e) => { e.preventDefault(); handleJump(); }, {passive: false});
+    window.addEventListener('mousedown', () => { if(gameActive) velocityY = -5; });
+    window.addEventListener('touchstart', (e) => { 
+        if(gameActive) { e.preventDefault(); velocityY = -5; }
+    }, {passive: false});
 
     function gameOver() {
         gameActive = false;
-        alert(`비행 종료! 비행 거리: ${distance}m`);
+        alert(`비행 종료!\n기록: ${distance}m\n\n점수를 기억하고 다음 차례에게 넘기세요!`);
         location.reload();
     }
-
-    update();
 </script>
 </body>
 </html>
