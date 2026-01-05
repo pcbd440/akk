@@ -2,162 +2,144 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>CSS Paper Plane Game</title>
+    <title>Y8 Style Paper Plane</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: sans-serif; background: #000; }
-        #game-container {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            background: linear-gradient(to bottom, #87CEEB, #E0F6FF);
-            overflow: hidden;
-        }
+        body { margin: 0; overflow: hidden; background: #4facfe; font-family: 'Arial', sans-serif; }
+        #game-container { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
         
+        /* 구름 배경 (Parallax 효과) */
+        .cloud {
+            position: absolute; background: white; border-radius: 50px; opacity: 0.6;
+            filter: blur(5px); pointer-events: none;
+        }
+
         #plane {
-            position: absolute;
-            width: 40px;
-            height: 30px;
-            left: 100px; /* 위치 고정 */
-            top: 50%;
-            background-color: white;
-            clip-path: polygon(0% 50%, 100% 0%, 80% 50%, 100% 100%);
-            transition: transform 0.1s;
-            z-index: 10;
+            position: absolute; width: 50px; height: 20px;
+            left: 150px; top: 50%;
+            background: white;
+            clip-path: polygon(0% 50%, 100% 0%, 85% 50%, 100% 100%, 0% 60%);
+            box-shadow: -5px 5px 10px rgba(0,0,0,0.2);
+            z-index: 100;
         }
 
-        .pipe {
-            position: absolute;
-            width: 60px;
-            background-color: #2e7d32;
-            border: 2px solid #1b5e20;
-            right: -70px; /* 화면 오른쪽 밖에서 생성 */
+        /* 비행기 뒤 잔상(Trail) */
+        .trail {
+            position: absolute; width: 4px; height: 4px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%; pointer-events: none;
         }
 
-        #score {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            font-size: 24px;
-            font-weight: bold;
-            color: white;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-            z-index: 20;
+        #ui {
+            position: absolute; top: 20px; left: 20px; color: white;
+            z-index: 200; text-shadow: 2px 2px 5px rgba(0,0,0,0.3);
         }
     </style>
 </head>
 <body>
 
 <div id="game-container">
-    <div id="score">Score: 0</div>
+    <div id="ui">
+        <div id="score">Distance: 0m</div>
+        <div id="speed-indicator">Speed: 0km/h</div>
+    </div>
     <div id="plane"></div>
 </div>
 
 <script>
-    const plane = document.getElementById('plane');
     const container = document.getElementById('game-container');
-    const scoreElement = document.getElementById('score');
+    const plane = document.getElementById('plane');
+    const scoreEl = document.getElementById('score');
+    const speedEl = document.getElementById('speed-indicator');
 
+    let gameActive = true;
     let planeY = window.innerHeight / 2;
-    let velocity = 0;
-    const gravity = 0.25;
-    const jump = -5;
-    let score = 0;
-    let isGameOver = false;
-    
-    // 장애물 관리 리스트
-    let pipes = [];
-    let pipeTick = 0;
+    let velocityY = 0;
+    let rotation = 0;
+    let speed = 5; // 전진 속도
+    let distance = 0;
 
-    function createPipe() {
-        const gap = 200; // 파이프 사이의 틈새
-        const minPipeHeight = 50;
-        const randomHeight = Math.random() * (window.innerHeight - gap - (minPipeHeight * 2)) + minPipeHeight;
+    // 1. 구름 생성 (배경 깊이감)
+    function createCloud() {
+        const cloud = document.createElement('div');
+        cloud.className = 'cloud';
+        const size = Math.random() * 100 + 50;
+        cloud.style.width = size + 'px';
+        cloud.style.height = (size * 0.6) + 'px';
+        cloud.style.top = Math.random() * window.innerHeight + 'px';
+        cloud.style.left = window.innerWidth + 'px';
+        // 멀리 있는 구름은 느리게 움직이도록 속도 부여
+        const cloudSpeed = Math.random() * 2 + 1;
+        container.appendChild(cloud);
 
-        // 위쪽 파이프
-        const topPipe = document.createElement('div');
-        topPipe.className = 'pipe';
-        topPipe.style.height = randomHeight + 'px';
-        topPipe.style.top = '0';
-        topPipe.style.left = window.innerWidth + 'px';
-        container.appendChild(topPipe);
+        const moveCloud = () => {
+            if (!gameActive) return;
+            const currentLeft = parseFloat(cloud.style.left);
+            if (currentLeft < -200) {
+                container.removeChild(cloud);
+            } else {
+                cloud.style.left = (currentLeft - cloudSpeed * (speed/5)) + 'px';
+                requestAnimationFrame(moveCloud);
+            }
+        };
+        moveCloud();
+    }
+    setInterval(createCloud, 2000);
 
-        // 아래쪽 파이프
-        const bottomPipe = document.createElement('div');
-        bottomPipe.className = 'pipe';
-        bottomPipe.style.height = (window.innerHeight - randomHeight - gap) + 'px';
-        bottomPipe.style.bottom = '0';
-        bottomPipe.style.left = window.innerWidth + 'px';
-        container.appendChild(bottomPipe);
-
-        pipes.push({ top: topPipe, bottom: bottomPipe, left: window.innerWidth, passed: false });
+    // 2. 비행기 잔상 효과
+    function createTrail(x, y) {
+        const trail = document.createElement('div');
+        trail.className = 'trail';
+        trail.style.left = x + 'px';
+        trail.style.top = y + 'px';
+        container.appendChild(trail);
+        
+        setTimeout(() => {
+            trail.style.opacity = '0';
+            setTimeout(() => container.removeChild(trail), 500);
+        }, 100);
     }
 
+    // 3. 메인 게임 루프
     function update() {
-        if (isGameOver) return;
+        if (!gameActive) return;
 
-        // 1. 비행기 물리 엔진
-        velocity += gravity;
-        planeY += velocity;
-        plane.style.transform = `rotate(${velocity * 3}deg)`;
+        // 물리 법칙: 각도가 위를 향하면 속도가 줄고, 아래를 향하면 빨라짐
+        velocityY += 0.15; // 중력
+        planeY += velocityY;
+        
+        // 회전 제어: 속도와 방향에 따라 부드럽게 회전
+        rotation = velocityY * 4;
+        plane.style.transform = `rotate(${rotation}deg)`;
         plane.style.top = planeY + 'px';
 
-        // 2. 바닥/천장 충돌
+        // 전진 거리 계산
+        distance += Math.floor(speed);
+        scoreEl.innerText = `Distance: ${distance}m`;
+        speedEl.innerText = `Speed: ${Math.floor(speed * 20)}km/h`;
+
+        // 잔상 생성
+        createTrail(150, planeY + 10);
+
+        // 경계선 체크
         if (planeY > window.innerHeight || planeY < 0) {
-            return gameOver();
-        }
-
-        // 3. 장애물 생성 및 이동 (오른쪽으로 날아가는 느낌 구현)
-        pipeTick++;
-        if (pipeTick % 120 === 0) { // 약 2초마다 장애물 생성
-            createPipe();
-        }
-
-        for (let i = pipes.length - 1; i >= 0; i--) {
-            let p = pipes[i];
-            p.left -= 3; // 장애물을 왼쪽으로 이동 (비행기가 오른쪽으로 가는 효과)
-            p.top.style.left = p.left + 'px';
-            p.bottom.style.left = p.left + 'px';
-
-            // 4. 충돌 감지
-            const planeRect = plane.getBoundingClientRect();
-            const topRect = p.top.getBoundingClientRect();
-            const bottomRect = p.bottom.getBoundingClientRect();
-
-            if (
-                planeRect.right > topRect.left && 
-                planeRect.left < topRect.right && 
-                (planeRect.top < topRect.bottom || planeRect.bottom > bottomRect.top)
-            ) {
-                return gameOver();
-            }
-
-            // 5. 점수 계산
-            if (!p.passed && p.left < 100) {
-                p.passed = true;
-                score++;
-                scoreElement.innerText = "Score: " + score;
-            }
-
-            // 6. 화면 밖으로 나간 장애물 제거
-            if (p.left < -100) {
-                container.removeChild(p.top);
-                container.removeChild(p.bottom);
-                pipes.splice(i, 1);
-            }
+            gameOver();
         }
 
         requestAnimationFrame(update);
     }
 
-    window.addEventListener('mousedown', () => { velocity = jump; });
-    window.addEventListener('touchstart', (e) => { 
-        e.preventDefault(); 
-        velocity = jump; 
-    }, {passive: false});
+    // 제어: 클릭 시 상승
+    const handleJump = () => {
+        if (!gameActive) return;
+        velocityY = -4.5;
+    };
+
+    window.addEventListener('mousedown', handleJump);
+    window.addEventListener('touchstart', (e) => { e.preventDefault(); handleJump(); }, {passive: false});
 
     function gameOver() {
-        isGameOver = true;
-        alert("게임 오버! 점수: " + score);
+        gameActive = false;
+        alert(`비행 종료! 비행 거리: ${distance}m`);
         location.reload();
     }
 
