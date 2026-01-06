@@ -8,7 +8,6 @@
         body { margin: 0; overflow: hidden; background: #4facfe; font-family: 'Malgun Gothic', sans-serif; touch-action: none; }
         #game-container { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
         
-        /* 모달 레이어 */
         #start-modal, #result-modal {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.8);
@@ -18,31 +17,25 @@
         #result-modal { display: none; }
 
         .modal-content {
-            position: relative; /* 버전 표시를 위한 기준점 */
+            position: relative;
             background: white; padding: 30px; border-radius: 25px;
             text-align: center; max-width: 85%; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
-        /* 오른쪽 구석 버전 표시 스타일 */
         .version-tag {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            font-size: 11px;
-            color: #bbb;
-            font-weight: normal;
+            position: absolute; top: 15px; right: 15px;
+            font-size: 11px; color: #bbb;
         }
         
         .final-score-number { 
-            font-size: 70px; font-weight: 900; color: #FFD700; 
-            text-shadow: 3px 3px 0px #000; margin: 15px 0;
+            font-size: 80px; font-weight: 900; color: #FFD700; 
+            text-shadow: 4px 4px 0px #000; margin: 15px 0;
         }
 
         .game-btn {
             background: #ff4757; color: white; border: none; padding: 20px 50px;
             font-size: 22px; border-radius: 50px; cursor: pointer; font-weight: bold;
-            display: inline-block;
-            -webkit-tap-highlight-color: transparent;
+            display: inline-block; -webkit-tap-highlight-color: transparent;
         }
 
         #plane {
@@ -53,7 +46,7 @@
         }
 
         .pipe {
-            position: absolute; width: 25px; 
+            position: absolute; width: 30px; 
             background: rgba(255, 255, 255, 0.6);
             border-radius: 15px; z-index: 50;
         }
@@ -66,12 +59,12 @@
 <div id="game-container">
     <div id="start-modal">
         <div class="modal-content">
-            <div class="version-tag">ver 0.1</div>
+            <div class="version-tag">ver 0.2</div>
             <h2 style="margin-top:0;">✈️ 종이비행기 대결!</h2>
-            <div style="text-align: left; background: #f0f8ff; padding: 15px; border-radius: 10px; margin: 15px 0; font-size: 15px;">
+            <div style="text-align: left; background: #f0f8ff; padding: 15px; border-radius: 10px; margin: 15px 0; font-size: 16px;">
                 <p>1. ✊✌️✋ 가위바위보 순서 정하기</p>
                 <p>2. 터치 한 번에 <b>높게</b> 튀어오릅니다!</p>
-                <p>3. 기둥 사이가 넓어 피하기 쉬워요.</p>
+                <p>3. 게임종료 후 <b>이동거리(노란색 큰 글씨)</b> 꼭 확인하세요.</p>
             </div>
             <button id="start-btn" class="game-btn">비행 시작!</button>
         </div>
@@ -79,8 +72,8 @@
 
     <div id="result-modal">
         <div class="modal-content">
-            <div class="version-tag">ver 0.1</div>
-            <div style="font-size: 20px; font-weight: bold;">최종 이동 거리</div>
+            <div class="version-tag">ver 0.2</div>
+            <div style="font-size: 24px; font-weight: bold;">최종 이동 거리</div>
             <div id="final-score" class="final-score-number">0m</div>
             <button id="restart-btn" class="game-btn">다시 하기</button>
         </div>
@@ -108,14 +101,11 @@
     let pipes = [];
     let pipeTick = 0;
 
-    const gravity = 0.28;
-    const jumpPower = -8.5; 
+    const gravity = 0.3;
+    const jumpPower = -9; 
 
     function handleStart(e) {
-        if (e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
+        if (e) { e.preventDefault(); e.stopPropagation(); }
         startModal.style.display = 'none';
         plane.style.display = 'block';
         ui.style.display = 'block';
@@ -129,8 +119,9 @@
     restartBtn.addEventListener('touchstart', () => location.reload());
 
     function createPipes() {
-        const gap = 320; 
-        const minHeight = 60;
+        // 태블릿용 난이도 조절: 구멍 크기를 320 -> 220으로 축소
+        const gap = 220; 
+        const minHeight = 80;
         const randomY = Math.random() * (window.innerHeight - gap - (minHeight * 2)) + minHeight;
 
         const topPipe = document.createElement('div');
@@ -161,11 +152,11 @@
         if (planeY > window.innerHeight || planeY < 0) return gameOver();
 
         pipeTick++;
-        if (pipeTick % 260 === 0) createPipes(); 
+        if (pipeTick % 220 === 0) createPipes(); 
 
         for (let i = pipes.length - 1; i >= 0; i--) {
             let p = pipes[i];
-            p.left -= 3.8; 
+            p.left -= 4.5; // 화면이 넓으므로 속도를 약간 올림
             p.top.style.left = p.left + 'px';
             p.bottom.style.left = p.left + 'px';
 
@@ -177,9 +168,7 @@
                 planeRect.right - 10 > topRect.left && 
                 planeRect.left + 10 < topRect.right && 
                 (planeRect.top + 10 < topRect.bottom || planeRect.bottom - 10 > bottomRect.top)
-            ) {
-                return gameOver();
-            }
+            ) { return gameOver(); }
 
             if (p.left < -100) {
                 container.removeChild(p.top);
