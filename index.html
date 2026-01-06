@@ -8,17 +8,29 @@
         body { margin: 0; overflow: hidden; background: #4facfe; font-family: 'Malgun Gothic', sans-serif; touch-action: none; }
         #game-container { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
         
+        /* 모달 레이어 */
         #start-modal, #result-modal {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.8);
             display: flex; justify-content: center; align-items: center;
-            z-index: 1000;
+            z-index: 2000;
         }
         #result-modal { display: none; }
 
         .modal-content {
+            position: relative; /* 버전 표시를 위한 기준점 */
             background: white; padding: 30px; border-radius: 25px;
             text-align: center; max-width: 85%; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        /* 오른쪽 구석 버전 표시 스타일 */
+        .version-tag {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 11px;
+            color: #bbb;
+            font-weight: normal;
         }
         
         .final-score-number { 
@@ -26,10 +38,11 @@
             text-shadow: 3px 3px 0px #000; margin: 15px 0;
         }
 
-        button {
-            background: #ff4757; color: white; border: none; padding: 18px 45px;
-            font-size: 20px; border-radius: 50px; cursor: pointer; font-weight: bold;
-            -webkit-appearance: none; /* 아이폰 기본 버튼 스타일 제거 */
+        .game-btn {
+            background: #ff4757; color: white; border: none; padding: 20px 50px;
+            font-size: 22px; border-radius: 50px; cursor: pointer; font-weight: bold;
+            display: inline-block;
+            -webkit-tap-highlight-color: transparent;
         }
 
         #plane {
@@ -40,9 +53,9 @@
         }
 
         .pipe {
-            position: absolute; width: 20px; 
+            position: absolute; width: 25px; 
             background: rgba(255, 255, 255, 0.6);
-            border-radius: 10px; z-index: 50;
+            border-radius: 15px; z-index: 50;
         }
 
         #ui { position: absolute; top: 40px; left: 20px; color: white; z-index: 200; display: none; font-size: 22px; font-weight: bold; }
@@ -53,21 +66,23 @@
 <div id="game-container">
     <div id="start-modal">
         <div class="modal-content">
+            <div class="version-tag">ver 0.1</div>
             <h2 style="margin-top:0;">✈️ 종이비행기 대결!</h2>
             <div style="text-align: left; background: #f0f8ff; padding: 15px; border-radius: 10px; margin: 15px 0; font-size: 15px;">
                 <p>1. ✊✌️✋ 가위바위보 순서 정하기</p>
-                <p>2. 클릭 한 번에 <b>높게</b> 튀어오릅니다!</p>
-                <p>3. 장애물 간격이 넓어 피하기 쉬워요.</p>
+                <p>2. 터치 한 번에 <b>높게</b> 튀어오릅니다!</p>
+                <p>3. 기둥 사이가 넓어 피하기 쉬워요.</p>
             </div>
-            <button id="start-btn" onclick="startGame(event)">비행 시작!</button>
+            <button id="start-btn" class="game-btn">비행 시작!</button>
         </div>
     </div>
 
     <div id="result-modal">
         <div class="modal-content">
+            <div class="version-tag">ver 0.1</div>
             <div style="font-size: 20px; font-weight: bold;">최종 이동 거리</div>
             <div id="final-score" class="final-score-number">0m</div>
-            <button id="restart-btn" onclick="location.reload()">다시 하기</button>
+            <button id="restart-btn" class="game-btn">다시 하기</button>
         </div>
     </div>
 
@@ -83,6 +98,8 @@
     const ui = document.getElementById('ui');
     const container = document.getElementById('game-container');
     const scoreEl = document.getElementById('score');
+    const startBtn = document.getElementById('start-btn');
+    const restartBtn = document.getElementById('restart-btn');
 
     let gameActive = false;
     let planeY = window.innerHeight / 2;
@@ -94,11 +111,10 @@
     const gravity = 0.28;
     const jumpPower = -8.5; 
 
-    // 버튼 터치 문제를 해결하기 위해 startGame 함수를 별도로 분리
-    function startGame(e) {
+    function handleStart(e) {
         if (e) {
             e.preventDefault();
-            e.stopPropagation(); // 이벤트가 window로 퍼져서 비행기가 튀는 걸 방지
+            e.stopPropagation();
         }
         startModal.style.display = 'none';
         plane.style.display = 'block';
@@ -106,6 +122,11 @@
         gameActive = true;
         update();
     }
+
+    startBtn.addEventListener('click', handleStart);
+    startBtn.addEventListener('touchstart', handleStart);
+    restartBtn.addEventListener('click', () => location.reload());
+    restartBtn.addEventListener('touchstart', () => location.reload());
 
     function createPipes() {
         const gap = 320; 
@@ -173,11 +194,11 @@
     }
 
     const control = (e) => {
-        // 클릭/터치 대상이 버튼이면 비행 로직 실행 안 함
-        if (e.target.tagName === 'BUTTON') return;
-        
-        if (e.cancelable) e.preventDefault();
-        if (gameActive) velocityY = jumpPower;
+        if (e.target.closest('button') || e.target.closest('.modal-content')) return;
+        if (gameActive) {
+            if (e.cancelable) e.preventDefault();
+            velocityY = jumpPower;
+        }
     };
 
     window.addEventListener('mousedown', control);
