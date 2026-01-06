@@ -2,62 +2,50 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>종이비행기 대결 - 시원한 조작 모드</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>종이비행기 대결!</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #4facfe; font-family: 'Malgun Gothic', sans-serif; }
+        body { margin: 0; overflow: hidden; background: #4facfe; font-family: 'Malgun Gothic', sans-serif; touch-action: none; }
         #game-container { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
         
-        /* 시작/종료 팝업 */
         #start-modal, #result-modal {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.8);
             display: flex; justify-content: center; align-items: center;
             z-index: 1000;
         }
-        #result-modal { display: none; } /* 결과창은 처음엔 숨김 */
+        #result-modal { display: none; }
 
         .modal-content {
-            background: white; padding: 40px; border-radius: 25px;
-            text-align: center; max-width: 450px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background: white; padding: 30px; border-radius: 25px;
+            text-align: center; max-width: 85%; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
         
-        /* 최종 거리 강조 스타일 */
-        .final-score-title { font-size: 24px; color: #333; margin-bottom: 10px; }
         .final-score-number { 
-            font-size: 80px; 
-            font-weight: 900; 
-            color: #FFD700; /* 노란색 */
-            text-shadow: 3px 3px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000;
-            margin: 20px 0;
+            font-size: 70px; font-weight: 900; color: #FFD700; 
+            text-shadow: 3px 3px 0px #000; margin: 15px 0;
         }
 
-        #start-btn, #restart-btn {
-            background: #ff4757; color: white; border: none; padding: 15px 40px;
+        button {
+            background: #ff4757; color: white; border: none; padding: 18px 45px;
             font-size: 20px; border-radius: 50px; cursor: pointer; font-weight: bold;
+            -webkit-appearance: none; /* 아이폰 기본 버튼 스타일 제거 */
         }
 
-        /* 비행기 */
         #plane {
-            position: absolute; width: 50px; height: 25px;
-            left: 100px; top: 50%;
-            background: white;
+            position: absolute; width: 45px; height: 22px;
+            left: 70px; top: 50%; background: white;
             clip-path: polygon(0% 15%, 20% 50%, 0% 85%, 100% 50%);
             z-index: 100; display: none;
-            filter: drop-shadow(-3px 3px 2px rgba(0,0,0,0.2));
         }
 
-        /* 얇은 장애물 */
         .pipe {
-            position: absolute; width: 25px; 
+            position: absolute; width: 20px; 
             background: rgba(255, 255, 255, 0.6);
-            border-radius: 15px; z-index: 50;
+            border-radius: 10px; z-index: 50;
         }
 
-        #ui { 
-            position: absolute; top: 20px; left: 20px; color: white; 
-            z-index: 200; display: none; font-size: 28px; font-weight: bold;
-        }
+        #ui { position: absolute; top: 40px; left: 20px; color: white; z-index: 200; display: none; font-size: 22px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -66,20 +54,19 @@
     <div id="start-modal">
         <div class="modal-content">
             <h2 style="margin-top:0;">✈️ 종이비행기 대결!</h2>
-            <div style="text-align: left; background: #f0f8ff; padding: 15px; border-radius: 10px; margin: 20px 0;">
-                <p>1. ✊✌️✋ 가위바위보로 순서 정하기</p>
+            <div style="text-align: left; background: #f0f8ff; padding: 15px; border-radius: 10px; margin: 15px 0; font-size: 15px;">
+                <p>1. ✊✌️✋ 가위바위보 순서 정하기</p>
                 <p>2. 클릭 한 번에 <b>높게</b> 튀어오릅니다!</p>
                 <p>3. 장애물 간격이 넓어 피하기 쉬워요.</p>
             </div>
-            <button id="start-btn">비행 시작!</button>
+            <button id="start-btn" onclick="startGame(event)">비행 시작!</button>
         </div>
     </div>
 
     <div id="result-modal">
         <div class="modal-content">
-            <div class="final-score-title">나의 최종 이동 거리</div>
+            <div style="font-size: 20px; font-weight: bold;">최종 이동 거리</div>
             <div id="final-score" class="final-score-number">0m</div>
-            <p style="color:#666; font-weight:bold;">점수를 기억하고 다음 차례에게 넘기세요!</p>
             <button id="restart-btn" onclick="location.reload()">다시 하기</button>
         </div>
     </div>
@@ -92,7 +79,6 @@
     const startModal = document.getElementById('start-modal');
     const resultModal = document.getElementById('result-modal');
     const finalScoreEl = document.getElementById('final-score');
-    const startBtn = document.getElementById('start-btn');
     const plane = document.getElementById('plane');
     const ui = document.getElementById('ui');
     const container = document.getElementById('game-container');
@@ -105,13 +91,25 @@
     let pipes = [];
     let pipeTick = 0;
 
-    // 조작 물리값 조정
-    const gravity = 0.25;      // 중력 살짝 증가 (무게감)
-    const jumpPower = -7.5;    // 점프 힘 강화 (이전 -5) -> 한번 클릭에 확 튐
+    const gravity = 0.28;
+    const jumpPower = -8.5; 
+
+    // 버튼 터치 문제를 해결하기 위해 startGame 함수를 별도로 분리
+    function startGame(e) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation(); // 이벤트가 window로 퍼져서 비행기가 튀는 걸 방지
+        }
+        startModal.style.display = 'none';
+        plane.style.display = 'block';
+        ui.style.display = 'block';
+        gameActive = true;
+        update();
+    }
 
     function createPipes() {
-        const gap = 280; // 통과 공간 더 넓게 (이전 240)
-        const minHeight = 80;
+        const gap = 320; 
+        const minHeight = 60;
         const randomY = Math.random() * (window.innerHeight - gap - (minHeight * 2)) + minHeight;
 
         const topPipe = document.createElement('div');
@@ -131,14 +129,6 @@
         pipes.push({ top: topPipe, bottom: bottomPipe, left: window.innerWidth });
     }
 
-    startBtn.addEventListener('click', () => {
-        startModal.style.display = 'none';
-        plane.style.display = 'block';
-        ui.style.display = 'block';
-        gameActive = true;
-        update();
-    });
-
     function update() {
         if (!gameActive) return;
 
@@ -150,12 +140,11 @@
         if (planeY > window.innerHeight || planeY < 0) return gameOver();
 
         pipeTick++;
-        // 장애물 간 간격 대폭 확대: 160 -> 240 (장애물이 훨씬 드물게 나옴)
-        if (pipeTick % 240 === 0) createPipes(); 
+        if (pipeTick % 260 === 0) createPipes(); 
 
         for (let i = pipes.length - 1; i >= 0; i--) {
             let p = pipes[i];
-            p.left -= 3.5; 
+            p.left -= 3.8; 
             p.top.style.left = p.left + 'px';
             p.bottom.style.left = p.left + 'px';
 
@@ -163,11 +152,10 @@
             const topRect = p.top.getBoundingClientRect();
             const bottomRect = p.bottom.getBoundingClientRect();
 
-            // 충돌 판정 여유 더 줌
             if (
-                planeRect.right - 8 > topRect.left && 
-                planeRect.left + 8 < topRect.right && 
-                (planeRect.top + 8 < topRect.bottom || planeRect.bottom - 8 > bottomRect.top)
+                planeRect.right - 10 > topRect.left && 
+                planeRect.left + 10 < topRect.right && 
+                (planeRect.top + 10 < topRect.bottom || planeRect.bottom - 10 > bottomRect.top)
             ) {
                 return gameOver();
             }
@@ -181,20 +169,22 @@
 
         distance += 1;
         scoreEl.innerText = distance;
-
         requestAnimationFrame(update);
     }
 
     const control = (e) => {
-        if(e) e.preventDefault();
-        if(gameActive) velocityY = jumpPower;
+        // 클릭/터치 대상이 버튼이면 비행 로직 실행 안 함
+        if (e.target.tagName === 'BUTTON') return;
+        
+        if (e.cancelable) e.preventDefault();
+        if (gameActive) velocityY = jumpPower;
     };
+
     window.addEventListener('mousedown', control);
-    window.addEventListener('touchstart', control, {passive: false});
+    window.addEventListener('touchstart', control, { passive: false });
 
     function gameOver() {
         gameActive = false;
-        // 결과창 표시
         finalScoreEl.innerText = distance + "m";
         resultModal.style.display = "flex";
     }
