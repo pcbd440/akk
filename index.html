@@ -54,6 +54,7 @@
         }
 
         #ui { position: absolute; top: 40px; left: 20px; color: white; z-index: 200; display: none; font-size: 22px; font-weight: bold; }
+        #speed-tag { font-size: 14px; color: #ffeaa7; margin-left: 10px; font-weight: normal; }
     </style>
 </head>
 <body>
@@ -61,13 +62,13 @@
 <div id="game-container">
     <div id="start-modal">
         <div class="modal-content">
-            <div class="version-tag">ver 0.6</div>
+            <div class="version-tag">ver 0.7</div>
             <h2 style="margin-top:0; color: #1e90ff;">✈️ 탄벌중 종이비행기 대결!</h2>
             <div style="text-align: left; background: #f0f8ff; padding: 15px; border-radius: 10px; margin: 15px 0; font-size: 16px;">
                 <p>1. <b>2번의 기회</b>가 주어집니다. 그 중 최고기록을 사용합니다.</p>
                 <p>2. ✊✌️✋ 가위바위보 순서 정하기</p>
                 <p>3. 터치해서 비행기의 <b>고도를 유지</b>해주세요.</p>
-                <p>4. 게임종료 후 <b>이동거리(노란색 큰 글씨)</b> 꼭 확인하세요.</p>
+                <p>4. <b>2000m마다 속도가 10%씩 빨라집니다!</b></p>
             </div>
             <button id="start-btn" class="game-btn">비행 시작!</button>
         </div>
@@ -75,14 +76,14 @@
 
     <div id="result-modal">
         <div class="modal-content">
-            <div class="version-tag">ver 0.6</div>
+            <div class="version-tag">ver 0.7</div>
             <div style="font-size: 24px; font-weight: bold;">최종 이동 거리</div>
             <div id="final-score" class="final-score-number">0m</div>
             <button id="restart-btn" class="game-btn">다시 하기</button>
         </div>
     </div>
 
-    <div id="ui">Distance: <span id="score">0</span>m</div>
+    <div id="ui">Distance: <span id="score">0</span>m <span id="speed-tag"></span></div>
     <div id="plane"></div>
 </div>
 
@@ -94,6 +95,7 @@
     const ui = document.getElementById('ui');
     const container = document.getElementById('game-container');
     const scoreEl = document.getElementById('score');
+    const speedTagEl = document.getElementById('speed-tag');
     const startBtn = document.getElementById('start-btn');
     const restartBtn = document.getElementById('restart-btn');
 
@@ -104,8 +106,10 @@
     let pipes = [];
     let pipeTick = 0;
 
+    // 초기 설정값
     const gravity = 0.3;
     const jumpPower = -7.2; 
+    let baseSpeed = 4.5; // 초기 이동 속도
 
     function handleStart(e) {
         if (e) { e.preventDefault(); e.stopPropagation(); }
@@ -115,6 +119,8 @@
         gameActive = true;
         planeY = window.innerHeight * 0.15;
         velocityY = 0;
+        distance = 0;
+        baseSpeed = 4.5;
         update();
     }
 
@@ -155,12 +161,22 @@
 
         if (planeY > window.innerHeight || planeY < 0) return gameOver();
 
+        // [수정] 2000m마다 속도 10% 증가 로직
+        let currentSpeed = baseSpeed * (1 + Math.floor(distance / 2000) * 0.1);
+        
+        // 속도가 올랐을 때 표시 (선택 사항)
+        if (distance > 0 && distance % 2000 === 0) {
+            speedTagEl.innerText = "Speed Up! " + Math.round((currentSpeed/baseSpeed)*100-100) + "%";
+        }
+
         pipeTick++;
-        if (pipeTick % 110 === 0) createPipes(); 
+        // 속도가 빨라지면 장애물 간격(프레임)도 맞춰서 줄여야 촘촘함이 유지됩니다.
+        let spawnInterval = Math.max(50, Math.floor(110 / (currentSpeed / baseSpeed)));
+        if (pipeTick % spawnInterval === 0) createPipes(); 
 
         for (let i = pipes.length - 1; i >= 0; i--) {
             let p = pipes[i];
-            p.left -= 4.5; 
+            p.left -= currentSpeed; 
             p.top.style.left = p.left + 'px';
             p.bottom.style.left = p.left + 'px';
 
