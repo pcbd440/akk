@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>종이비행기 대결!</title>
+    <title>탄벌중 종이비행기 대결!</title>
     <style>
         body { margin: 0; overflow: hidden; background: #4facfe; font-family: 'Malgun Gothic', sans-serif; touch-action: none; }
         #game-container { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
@@ -61,12 +61,13 @@
 <div id="game-container">
     <div id="start-modal">
         <div class="modal-content">
-            <div class="version-tag">ver 0.5</div>
-            <h2 style="margin-top:0;">✈️ 종이비행기 대결!</h2>
+            <div class="version-tag">ver 0.6</div>
+            <h2 style="margin-top:0; color: #1e90ff;">✈️ 탄벌중 종이비행기 대결!</h2>
             <div style="text-align: left; background: #f0f8ff; padding: 15px; border-radius: 10px; margin: 15px 0; font-size: 16px;">
-                <p>1. ✊✌️✋ 가위바위보 순서 정하기</p>
-                <p>2. 터치해서 비행기의 <b>고도를 유지</b>해주세요.</p>
-                <p>3. 게임종료 후 <b>이동거리(노란색 큰 글씨)</b> 꼭 확인하세요.</p>
+                <p>1. <b>2번의 기회</b>가 주어집니다. 그 중 최고기록을 사용합니다.</p>
+                <p>2. ✊✌️✋ 가위바위보 순서 정하기</p>
+                <p>3. 터치해서 비행기의 <b>고도를 유지</b>해주세요.</p>
+                <p>4. 게임종료 후 <b>이동거리(노란색 큰 글씨)</b> 꼭 확인하세요.</p>
             </div>
             <button id="start-btn" class="game-btn">비행 시작!</button>
         </div>
@@ -74,7 +75,7 @@
 
     <div id="result-modal">
         <div class="modal-content">
-            <div class="version-tag">ver 0.5</div>
+            <div class="version-tag">ver 0.6</div>
             <div style="font-size: 24px; font-weight: bold;">최종 이동 거리</div>
             <div id="final-score" class="final-score-number">0m</div>
             <button id="restart-btn" class="game-btn">다시 하기</button>
@@ -104,7 +105,6 @@
     let pipeTick = 0;
 
     const gravity = 0.3;
-    // [수정] 튀어오르는 강도 20% 하향 조정 (-9 -> -7.2)
     const jumpPower = -7.2; 
 
     function handleStart(e) {
@@ -113,10 +113,8 @@
         plane.style.display = 'block';
         ui.style.display = 'block';
         gameActive = true;
-        
         planeY = window.innerHeight * 0.15;
         velocityY = 0;
-        
         update();
     }
 
