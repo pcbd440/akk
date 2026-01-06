@@ -40,13 +40,15 @@
 
         #plane {
             position: absolute; width: 45px; height: 22px;
-            left: 70px; top: 50%; background: white;
+            left: 70px; top: 15%; /* 중앙(50%)에서 상단(15%)으로 시작 위치 수정 */
+            background: white;
             clip-path: polygon(0% 15%, 20% 50%, 0% 85%, 100% 50%);
             z-index: 100; display: none;
+            filter: drop-shadow(-3px 3px 2px rgba(0,0,0,0.2));
         }
 
         .pipe {
-            position: absolute; width: 30px; 
+            position: absolute; width: 25px; 
             background: rgba(255, 255, 255, 0.6);
             border-radius: 15px; z-index: 50;
         }
@@ -59,7 +61,7 @@
 <div id="game-container">
     <div id="start-modal">
         <div class="modal-content">
-            <div class="version-tag">ver 0.2</div>
+            <div class="version-tag">ver 0.3</div>
             <h2 style="margin-top:0;">✈️ 종이비행기 대결!</h2>
             <div style="text-align: left; background: #f0f8ff; padding: 15px; border-radius: 10px; margin: 15px 0; font-size: 16px;">
                 <p>1. ✊✌️✋ 가위바위보 순서 정하기</p>
@@ -72,7 +74,7 @@
 
     <div id="result-modal">
         <div class="modal-content">
-            <div class="version-tag">ver 0.2</div>
+            <div class="version-tag">ver 0.3</div>
             <div style="font-size: 24px; font-weight: bold;">최종 이동 거리</div>
             <div id="final-score" class="final-score-number">0m</div>
             <button id="restart-btn" class="game-btn">다시 하기</button>
@@ -95,7 +97,7 @@
     const restartBtn = document.getElementById('restart-btn');
 
     let gameActive = false;
-    let planeY = window.innerHeight / 2;
+    let planeY = window.innerHeight * 0.15; // 시작 높이를 상단 15% 지점으로 설정
     let velocityY = 0;
     let distance = 0;
     let pipes = [];
@@ -110,6 +112,11 @@
         plane.style.display = 'block';
         ui.style.display = 'block';
         gameActive = true;
+        
+        // 시작 시 위치 초기화
+        planeY = window.innerHeight * 0.15;
+        velocityY = 0;
+        
         update();
     }
 
@@ -119,9 +126,9 @@
     restartBtn.addEventListener('touchstart', () => location.reload());
 
     function createPipes() {
-        // 태블릿용 난이도 조절: 구멍 크기를 320 -> 220으로 축소
-        const gap = 220; 
-        const minHeight = 80;
+        // [수정] 통과 구멍 크기를 50% 축소 (220 -> 110)
+        const gap = 110; 
+        const minHeight = 50;
         const randomY = Math.random() * (window.innerHeight - gap - (minHeight * 2)) + minHeight;
 
         const topPipe = document.createElement('div');
@@ -149,14 +156,16 @@
         plane.style.transform = `rotate(${velocityY * 3}deg)`;
         plane.style.top = planeY + 'px';
 
+        // 바닥이나 천장에 닿으면 게임 오버
         if (planeY > window.innerHeight || planeY < 0) return gameOver();
 
         pipeTick++;
-        if (pipeTick % 220 === 0) createPipes(); 
+        // [수정] 장애물 등장 간격 50% 축소 (220 -> 110프레임마다 생성)
+        if (pipeTick % 110 === 0) createPipes(); 
 
         for (let i = pipes.length - 1; i >= 0; i--) {
             let p = pipes[i];
-            p.left -= 4.5; // 화면이 넓으므로 속도를 약간 올림
+            p.left -= 4.5; 
             p.top.style.left = p.left + 'px';
             p.bottom.style.left = p.left + 'px';
 
@@ -164,10 +173,11 @@
             const topRect = p.top.getBoundingClientRect();
             const bottomRect = p.bottom.getBoundingClientRect();
 
+            // 충돌 판정 여유를 5px로 줄여 조금 더 정교하게 수정
             if (
-                planeRect.right - 10 > topRect.left && 
-                planeRect.left + 10 < topRect.right && 
-                (planeRect.top + 10 < topRect.bottom || planeRect.bottom - 10 > bottomRect.top)
+                planeRect.right - 5 > topRect.left && 
+                planeRect.left + 5 < topRect.right && 
+                (planeRect.top + 5 < topRect.bottom || planeRect.bottom - 5 > bottomRect.top)
             ) { return gameOver(); }
 
             if (p.left < -100) {
